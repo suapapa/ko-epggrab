@@ -3,17 +3,19 @@
 [한국의 EPG](https://namu.wiki/w/%EC%A0%84%EC%9E%90%20%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%A8%20%EC%95%88%EB%82%B4#s-2)는
 부실하게 관리되고 있음. 일 예로, tvheadend에서 지상파의 OTA EPG를 사용하려 하면 느린 속도와 부족한 정보에 울화통이 터짐.
 
-여러 업체(웹 포털, IPTV 프로바이더)에서 자체적으로 EPG를 웹에서 제공하고 있음.
-[epg2xml](https://github.com/epg2xml/epg2xml) 프로젝트에서 웹상의 epg들을 크롤링? 하여
-epggrab 에서 사용하는 `xmltv.xml`를 만들어 tvheadend에 unix domain socket을 통해 주입할 수 있음.
+다행히, 웹에서 여러 업체(포털, IPTV 프로바이더)가 자체적으로 EPG를 제공하고 있고
+[epg2xml](https://github.com/epg2xml/epg2xml) 를 사용하면
+Tvheadend의 XMLTV EPG Grabber Module 에서 사용하는 `xmltv.xml`를 만들수 있음.
 
-이 프로그램, ko-epggrab 은 `xmltv.xml`파일을 만들 때 수동으로 채널 목록을 json 설정 파일, `epg2xml.json`
-에 채워 넣는 과정을 조금이나마 단순화 하기 위해 만들어짐.
+하지만, 설정과 반복실행을 자동화 하기가 힘든점이 어려웠음.
 
-- EPG프로바이더, 카테고리별 선택
+ko-epggrab 은 epgxml의 채널 목록을 json 설정 파일, `epg2xml.json`
+에 채워 넣는 과정과 주기적인 실행을 단순, 자동화 하고 Tvheadend로 부터 분리하기 위해 만들었으며
+다음의 기능이 있음:
+- EPG 프로바이더, 카테고리별 채널 선택
 - 채널 이름의 allow list 필터링
 - 주기적인 채널 목록 갱신 (기본값: 1주일에 한 번)
-- 주기적인 EPG 생성 및 푸시 (기본값: 12시간마다)
+- 주기적인 EPG 생성 및 UDS 푸시 (기본값: 12시간마다)
 
 
 ## 도커 이미지로 실험해 보기
@@ -60,8 +62,8 @@ services:
 
 ### TVHeadend UI 설정
 
-![](_img/EPGGrabberModule.png)
-![](_img/EPGGrabberChannels.png)
+![EPGGrabberModule](_img/EPGGrabberModule.png)
+![EPGGrabberChannels](_img/EPGGrabberChannels.png)
 
 ### 개발 방법
 
