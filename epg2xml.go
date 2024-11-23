@@ -90,6 +90,8 @@ func EPG2XMLSearchChannels(fetch bool) (Channels, error) {
 	}
 
 	if fetch {
+		os.Remove(epg2xmlChannelConf) // epg2xml update_channels 이 channel 파일이 있으면 업데이트를 하지 않음.
+
 		if err := runEPG2XML("update_channels"); err != nil {
 			return nil, errors.Wrap(err, "fail to update channels")
 		}

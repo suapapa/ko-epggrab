@@ -36,8 +36,8 @@ services:
     image: suapapa/ko-epggrab:main
     container_name: ko-epggrab
     environment:
-      - ENV CH_PROVIDERS_CATEGORIES="NAVER:지상파" # EPG 제공업체와 카테고리를 나열
-      - ENV CH_NAME_FILETER="경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2" # 위의 채널 목록에서 선택할 whitelist 나열 (없으면 전체선택)
+      - CH_PROVIDERS_CATEGORIES="NAVER:지상파" # EPG 제공업체와 카테고리를 나열
+      - CH_NAME_FILETER="경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2" # 위의 채널 목록에서 선택할 whitelist 나열 (없으면 전체선택)
     volumes:
       - /system/tvheadend/config/epggrab:/epggrab # tvheadend 에서 마운트한 설정디레터리와 base가 같아야 서로 통신 가능
     restart: unless-stopped

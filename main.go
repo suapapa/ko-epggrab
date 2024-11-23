@@ -17,6 +17,7 @@ import (
 var (
 	flagFetchChannels    bool // Fetch channels from EPG providers.
 	flagSendXMLTV2Socket bool // Send XMLTV file to Unix domain socket.
+	flagListChannels     bool // List up channels.
 	flagDeamonize        bool // Run as daemon.
 
 	// Select channels from epg2xml_conf/Channel.json by EPG provider and category.
@@ -32,10 +33,11 @@ var (
 
 func main() {
 	flag.BoolVar(&flagFetchChannels, "fc", false, "Fetch channels from EPG providers.")
+	flag.BoolVar(&flagListChannels, "lc", false, "List up channels in YAML format and exit.")
 	flag.BoolVar(&flagSendXMLTV2Socket, "ss", false, "Send XMLTV file to Unix domain socket.")
-	flag.BoolVar(&flagDeamonize, "d", false, "Run as daemon.")
 	flag.StringVar(&flagEPGProvidersCategories, "pc", "NAVER:지상파", "Select channels from epg2xml_conf/Channel.json by EPG provider and category.")
-	flag.StringVar(&flagNameFilter, "nf", "KBS1,KBS2,MBC,SBS,EBS1,EBS2", "Select channels from epg2xml_conf/Channel.json by channel name.")
+	flag.StringVar(&flagNameFilter, "nf", "", "Select channels from epg2xml_conf/Channel.json by channel name.")
+	flag.BoolVar(&flagDeamonize, "d", false, "Run as daemon.")
 	flag.Parse()
 
 	chNameFilter := setChannelNameFilter(flagNameFilter)
@@ -44,6 +46,13 @@ func main() {
 	channels, err := EPG2XMLSearchChannels(flagFetchChannels)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if flagListChannels {
+		if err := listupChannels(channels); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 
 	epgProviderCategoryChannels := make(map[string]map[string][]*Channel)
@@ -61,6 +70,10 @@ func main() {
 	log.Println("Selecting channels by given EPG providers, categories and, name filters...")
 	var selectedChannels []*Channel
 	pcs := strings.Split(flagEPGProvidersCategories, ";")
+	if len(pcs) == 0 {
+		log.Fatal("Invalid EPG providers and categories")
+	}
+
 	for _, pc := range pcs {
 		parts := strings.Split(pc, ":")
 		provider := parts[0]

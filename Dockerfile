@@ -35,4 +35,4 @@ RUN mkdir /conf
 WORKDIR /app
 COPY --from=builder /app/ko-epggrab .
 
-ENTRYPOINT ["/bin/sh", "-c", "./ko-epggrab -fc -pc \"$CH_PROVIDERS_CATEGORIES\" -nf \"$CH_NAME_FILETER\" -ss -d"]
+CMD ["/bin/sh", "-c", "./ko-epggrab -fc -pc \"$CH_PROVIDERS_CATEGORIES\" -nf \"$CH_NAME_FILETER\" -ss -d"]
