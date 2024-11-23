@@ -15,6 +15,19 @@ epggrab 에서 사용하는 `xmltv.xml`를 만들어 tvheadend에 unix domain so
 - 주기적인 채널 목록 갱신 (기본값: 1주일에 한 번)
 - 주기적인 EPG 생성 및 푸시 (기본값: 12시간마다)
 
+
+## 도커 이미지로 실험해 보기
+
+채널 목록을 패치하고(`-fc`) 채널 목록을 Yaml 포멧으로 프로바이더와 카테고리별로 나열(`-lc`) :
+```sh
+mkdir epg2xml_conf
+docker pull suapapa/ko-epggrab:main
+docker run \
+  -it --rm -v $(pwd)/epg2xml_conf:/conf \
+  suapapa/ko-epggrab:main \
+    /app/ko-epggrab -fc -lc
+```
+
 Docker-Compose 로 tvheadend와 함께 사용하는 예제:
 ```yaml
 services:
@@ -36,8 +49,8 @@ services:
     image: suapapa/ko-epggrab:main
     container_name: ko-epggrab
     environment:
-      - CH_PROVIDERS_CATEGORIES="NAVER:지상파" # EPG 제공업체와 카테고리를 나열
-      - CH_NAME_FILETER="경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2" # 위의 채널 목록에서 선택할 whitelist 나열 (없으면 전체선택)
+      - CH_PROVIDERS_CATEGORIES="NAVER:지상파,종합 편성;LG:홈쇼핑" # EPG 제공업체와 카테고리를 나열
+      # - CH_NAME_FILETER="경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2" # 위의 채널 목록에서 선택할 whitelist
     volumes:
       - /system/tvheadend/config/epggrab:/epggrab # tvheadend 에서 마운트한 설정디레터리와 base가 같아야 서로 통신 가능
     restart: unless-stopped
