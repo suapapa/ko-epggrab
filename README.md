@@ -56,7 +56,14 @@ services:
     restart: unless-stopped
 ```
 
-## 개발 방법
+## 참고
+
+### TVHeadend UI 설정
+
+![](_img/EPGGrabberModule.png)
+![](_img/EPGGrabberChannels.png)
+
+### 개발 방법
 
 epg2xml 설치:
 ```sh
