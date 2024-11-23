@@ -21,11 +21,13 @@ var (
 
 	// Select channels from epg2xml_conf/Channel.json by EPG provider and category.
 	// {EPGProvider1}:{Category1,Category2};{EPGProvider2}:{Category1};...
-	flagEPGProvidersCategories string // "NAVER:지상파"
+	// "NAVER:지상파"
+	flagEPGProvidersCategories string
 
 	// Select channels from epg2xml_conf/Channel.json by channel name.
 	// {ChannelName1},{ChannelName2},...
-	flagNameFilter string // "경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2"
+	// "경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2"
+	flagNameFilter string
 )
 
 func main() {
