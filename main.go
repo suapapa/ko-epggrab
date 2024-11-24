@@ -79,6 +79,9 @@ func main() {
 
 	for _, pc := range pcs {
 		parts := strings.Split(pc, ":")
+		if len(parts) != 2 {
+			log.Fatalf("Invalid EPG provider and categories: %s", pc)
+		}
 		provider := parts[0]
 		categorySelects := strings.Split(parts[1], ",")
 		for _, category := range categorySelects {
