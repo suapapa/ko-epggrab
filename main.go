@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,6 +30,8 @@ var (
 	// {ChannelName1},{ChannelName2},...
 	// "경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2"
 	flagNameFilter string
+
+	cronMu sync.Mutex
 )
 
 func main() {
@@ -114,6 +117,8 @@ func main() {
 	if flagDeamonize {
 		c := cron.New()
 		_, err := c.AddFunc(cronChannelFetch, func() {
+			cronMu.Lock()
+			defer cronMu.Unlock()
 			log.Println("Fetching channels...")
 			if _, err := EPG2XMLSearchChannels(true); err != nil {
 				log.Printf("Fail to fetch channels: %v", err)
@@ -123,6 +128,8 @@ func main() {
 			log.Fatal(err)
 		}
 		_, err = c.AddFunc(cronGenerateXMLTV, func() {
+			cronMu.Lock()
+			defer cronMu.Unlock()
 			log.Println("Generating XMLTV file...")
 			if err := EPG2XMLMakeXMLTV(selectedChannels); err != nil {
 				log.Printf("Fail to generate XMLTV file: %v", err)
