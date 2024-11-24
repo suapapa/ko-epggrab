@@ -30,6 +30,12 @@ RUN pip install --upgrade pip
 RUN pip install git+https://github.com/epg2xml/epg2xml.git
 RUN apk del git
 
+ENV TZ=Asia/Seoul
+RUN apk --no-cache add tzdata && \
+    cp /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone \
+    apk del tzdata
+
 RUN mkdir /conf
 
 WORKDIR /app
