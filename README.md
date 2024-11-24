@@ -9,7 +9,7 @@ Tvheadend의 XMLTV EPG Grabber Module 에서 사용하는 `xmltv.xml`를 만들�
 
 하지만, 설정과 반복실행을 자동화 하기가 힘든점이 어려웠음.
 
-ko-epggrab 은 epgxml의 채널 목록을 json 설정 파일, `epg2xml.json`
+ko-epggrab 은 epg2xml의 채널 목록을 json 설정 파일, `epg2xml.json`
 에 채워 넣는 과정과 주기적인 실행을 단순, 자동화 하고 Tvheadend로 부터 분리하기 위해 만들었으며
 다음의 기능이 있음:
 - EPG 프로바이더, 카테고리별 채널 선택
