@@ -14,7 +14,7 @@ services:
       - /dev/dri:/dev/dri
     restart: unless-stopped
   ko-epggrab:
-    image: suapapa/ko-epggrab:main
+    image: suapapa/ko-epggrab:latest
     container_name: ko-epggrab
     # environment:
     #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 채널 목록 갱신 주기
