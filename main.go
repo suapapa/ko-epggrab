@@ -38,12 +38,12 @@ func main() {
 	flag.BoolVar(&flagFetchChannels, "fc", false, "Fetch channels from EPG providers.")
 	flag.BoolVar(&flagListChannels, "lc", false, "List up channels in YAML format and exit.")
 	flag.BoolVar(&flagSendXMLTV2Socket, "ss", false, "Send XMLTV file to Unix domain socket.")
-	flag.StringVar(&flagEPGProvidersCategories, "pc", "NAVER:지상파", "Select channels from epg2xml_conf/Channel.json by EPG provider and category.")
-	flag.StringVar(&flagNameFilter, "nf", "", "Select channels from epg2xml_conf/Channel.json by channel name.")
+	flag.StringVar(&flagEPGProvidersCategories, "pc", "NAVER:지상파", "Select channels from epg2xml channels by EPG provider and category.")
+	flag.StringVar(&flagNameFilter, "nf", "", "Select channels from epg2xml channels by channel name.")
 	flag.BoolVar(&flagDeamonize, "d", false, "Run as daemon.")
 	flag.Parse()
 
-	chNameFilter := setChannelNameFilter(flagNameFilter)
+	chNameFilter := makeAllowFilter(flagNameFilter)
 
 	log.Println("Listing up channel candidates...")
 	channels, err := EPG2XMLSearchChannels(flagFetchChannels)
