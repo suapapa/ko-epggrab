@@ -86,7 +86,7 @@ func main() {
 		categorySelects := strings.Split(parts[1], ",")
 		for _, category := range categorySelects {
 			chs := epgProviderCategoryChannels[provider][category]
-			if chNameFilter == nil {
+			if len(chNameFilter) == 0 {
 				selectedChannels = append(selectedChannels, chs...)
 			} else {
 				for _, ch := range chs {

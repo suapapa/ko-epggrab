@@ -4,6 +4,9 @@ import "strings"
 
 // "KBS,MBC" -> {"KBS":true, "MBC":true}
 func setChannelNameFilter(filterStr string) map[string]bool {
+	if filterStr == "" {
+		return nil
+	}
 	fs := strings.Split(filterStr, ",")
 	if len(fs) == 0 {
 		return nil
