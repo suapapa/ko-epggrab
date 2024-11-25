@@ -3,7 +3,7 @@ package main
 import "os"
 
 var (
-	epg2xmlChannelConf = "./epg2xml_conf/Channel.json"
+	epg2xmlChannelConf = "./epg2xml_conf/epg2xml_channels.json"
 	epg2xmlProgramConf = "./epg2xml_conf/epg2xml.json"
 	epg2xmlXMLTVOutput = "./epg2xml_conf/xmltv.xml"
 

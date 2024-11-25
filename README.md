@@ -27,7 +27,7 @@ docker pull suapapa/ko-epggrab:main
 docker run \
   -it --rm -v $(pwd)/epg2xml_conf:/conf \
   suapapa/ko-epggrab:main \
-    /app/ko-epggrab -fc -lc
+    -fc -lc
 ```
 
 Docker-Compose 로 tvheadend와 함께 사용하는 예제:
@@ -50,9 +50,17 @@ services:
   ko-epggrab:
     image: suapapa/ko-epggrab:main
     container_name: ko-epggrab
-    environment:
-      - CH_PROVIDERS_CATEGORIES="NAVER:지상파,종합 편성;LG:홈쇼핑" # EPG 제공업체와 카테고리를 나열
-      # - CH_NAME_FILETER="경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2" # 위의 채널 목록에서 선택할 whitelist
+    # environment:
+    #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 채널 목록 갱신 주기
+    #   - CRON_GENERATE_XMLTV="0 */12 * * *" # xmltv.xml의 생성 및 UDS 전송 주기
+    command:
+      - -fc # EPG 제공업체에서 채널 목록 갱신
+      - -pc # EPG 제공업체와 카테고리를 나열
+      - NAVER:지상파,종합 편성;LG:홈쇼핑 # pc 옵션의 값
+      - -nf # 위의 채널 목록에서 선택할 whitelist
+      - 경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2 # nf 옵션의 값
+      - -ss # send to socket
+      - -d # deamon mode
     volumes:
       - /system/tvheadend/config/epggrab:/epggrab # tvheadend 에서 마운트한 설정디레터리와 base가 같아야 서로 통신 가능
     restart: unless-stopped
