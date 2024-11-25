@@ -2,25 +2,17 @@ name: Publish Docker image
 
 on:
   push:
-    branches: [ "main" ]
-  # pull_request:
-  #   branches: [ "main" ]
-  release:
-    types: [published]
+    # branches: [ "main" ]
+    tags:
+      - "v*.*.*"
+  # release:
+  #   types: [published]
 
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-    # permissions:
-    #   packages: write
-    #   contents: read
-    #   attestations: write
-    #   id-token: write
     steps:
-      # - name: Check out the repo
-      #   uses: actions/checkout@v4
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       
@@ -33,9 +25,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Extract Docker tag
+        id: extract_tag
+        run: echo "DOCKER_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_EN
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: suapapa/ko-epggrab:latest
+          tags: |
+            suapapa/ko-epggrab:latest
+            suapapa/ko-epggrab:${{ env.DOCKER_TAG }}

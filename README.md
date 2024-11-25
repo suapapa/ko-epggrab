@@ -23,10 +23,10 @@ ko-epggrab 은 epg2xml의 채널 목록을 json 설정 파일, `epg2xml.json`
 채널 목록을 패치하고(`-fc`) 채널 목록을 Yaml 포멧으로 프로바이더와 카테고리별로 나열(`-lc`) :
 ```sh
 mkdir epg2xml_conf
-docker pull suapapa/ko-epggrab:main
+docker pull suapapa/ko-epggrab:latest
 docker run \
   -it --rm -v $(pwd)/epg2xml_conf:/conf \
-  suapapa/ko-epggrab:main \
+  suapapa/ko-epggrab:latest \
     -fc -lc
 ```
 
@@ -48,7 +48,7 @@ services:
       - /dev/dri:/dev/dri
     restart: unless-stopped
   ko-epggrab:
-    image: suapapa/ko-epggrab:main
+    image: suapapa/ko-epggrab:latest
     container_name: ko-epggrab
     # environment:
     #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 채널 목록 갱신 주기
