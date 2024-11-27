@@ -109,7 +109,7 @@ func runEPG2XML(command string) error {
 	args := append([]string{
 		"--config", epg2xmlProgramConf,
 		"--channelfile", epg2xmlChannelConf,
-		"--xmlfile", epg2xmlXMLTVOutput,
+		"--xmlfile", xmlTVXmlPath,
 	}, command)
 	cmd := exec.Command("epg2xml", args...)
 

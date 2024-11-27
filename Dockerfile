@@ -16,10 +16,10 @@ ENV CRON_GENERATE_XMLTV="0 */12 * * *"
 # epg2xml 이 생성한 파일들을 보고 싶으면 /conf 에 마운트
 ENV EPG2XML_CHANNEL_CONF=/conf/epg2xml_channels.json
 ENV EPG2XML_PROGRAM_CONF=/conf/epg2xml.json
-ENV EPG2XML_XMLTV_OUTPUT=/conf/xmltv.xml
+ENV XMLTV_XML_PATH=/conf/xmltv.xml
 
 # epggrab 소켓을 사용하기위해 tvheadend의 /conf/epggrab 을 /epggrab 에 마운트
-ENV EPGGRAB_SOCK_PATH=/epggrab/xmltv.sock
+ENV XMLTV_SOCK_PATH=/epggrab/xmltv.sock
 
 RUN apk --no-cache add ca-certificates git
 RUN pip install --upgrade pip

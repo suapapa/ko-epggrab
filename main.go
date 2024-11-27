@@ -156,7 +156,7 @@ func main() {
 }
 
 func sendXMLTV2Socket() error {
-	conn, err := net.Dial("unix", epgGrabSockPath)
+	conn, err := net.Dial("unix", xmlTVSockPath)
 	if err != nil {
 		errors.Wrap(err, "fail to dial unix domain socket")
 	}
@@ -165,7 +165,7 @@ func sendXMLTV2Socket() error {
 	}
 	defer conn.Close()
 
-	f, err := os.Open(epg2xmlXMLTVOutput)
+	f, err := os.Open(xmlTVXmlPath)
 	if err != nil {
 		return errors.Wrap(err, "fail to open XMLTV file")
 	}
