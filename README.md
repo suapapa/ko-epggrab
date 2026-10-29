@@ -44,7 +44,7 @@ services:
       - PGID=0
       - TZ=Asia/Seoul
     volumes:
-      - ./tvheadend_config:/config # tvheadend의 설정 디렉터리
+      - tvheadend_config:/config # tvheadend의 설정 디렉터리
       - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
       - ./tvheadend_recording:/recordings
     network_mode: "host"
@@ -70,6 +70,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  tvheadend_config:
   epggrab_data:
 ```
 
