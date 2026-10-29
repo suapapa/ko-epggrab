@@ -35,3 +35,11 @@ Thumbs.db
 # AI Agents
 .agents/
 skills-lock.json
+
+# Archify: keep candidate.json (+ optional .html); ignore receipts / review dirs
+site/**/review-*/
+site/**/*.finalize.json
+site/**/*.finalize-summary.json
+site/**/*.browser-check.json
+site/**/*.delivery.json
+site/**/candidate.before-*.json

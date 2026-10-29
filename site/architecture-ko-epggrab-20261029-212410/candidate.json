@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ko-epggrab 시스템 구조",
+    "locale": "ko",
+    "output": "site/architecture-ko-epggrab-20261029-212410/ko-epggrab.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "운영자",
+      "sublabel": "브라우저",
+      "icon": "person",
+      "pos": [40, 220],
+      "size": [120, 60]
+    },
+    {
+      "id": "webui",
+      "type": "frontend",
+      "label": "Web UI",
+      "sublabel": "embed web/",
+      "icon": "frontend",
+      "pos": [220, 220],
+      "size": [130, 60]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "HTTP Server",
+      "sublabel": ":8080 /api",
+      "icon": "backend",
+      "pos": [420, 220],
+      "size": [140, 60]
+    },
+    {
+      "id": "config",
+      "type": "backend",
+      "label": "ConfigManager",
+      "sublabel": "AppConfig",
+      "icon": "backend",
+      "pos": [420, 70],
+      "size": [140, 60]
+    },
+    {
+      "id": "sched",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "robfig/cron",
+      "icon": "clock",
+      "pos": [640, 220],
+      "size": [140, 60]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "EPG2XMLRunner",
+      "sublabel": "exec wrapper",
+      "icon": "backend",
+      "pos": [860, 220],
+      "size": [150, 60]
+    },
+    {
+      "id": "epg2xml",
+      "type": "external",
+      "label": "epg2xml",
+      "sublabel": "Python CLI",
+      "icon": "external",
+      "pos": [1080, 220],
+      "size": [130, 60]
+    },
+    {
+      "id": "conf",
+      "type": "database",
+      "label": "/conf JSON",
+      "sublabel": "ko-epggrab·channels",
+      "icon": "database",
+      "pos": [40, 70],
+      "size": [150, 60]
+    },
+    {
+      "id": "xmltv",
+      "type": "database",
+      "label": "xmltv.xml",
+      "sublabel": "/epggrab",
+      "icon": "database",
+      "pos": [860, 380],
+      "size": [150, 60]
+    },
+    {
+      "id": "tvheadend",
+      "type": "external",
+      "label": "Tvheadend",
+      "sublabel": "xmltv.sock 수신",
+      "icon": "external",
+      "pos": [640, 380],
+      "size": [140, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "ko-epggrab 프로세스",
+      "wraps": ["webui", "api", "config", "sched", "runner"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "id": "op-web",
+      "from": "operator",
+      "to": "webui",
+      "label": "HTTP",
+      "variant": "emphasis"
+    },
+    {
+      "id": "web-api",
+      "from": "webui",
+      "to": "api",
+      "label": "/api"
+    },
+    {
+      "id": "api-config",
+      "from": "api",
+      "to": "config",
+      "label": "Get/Update",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "api-sched",
+      "from": "api",
+      "to": "sched",
+      "label": "trigger"
+    },
+    {
+      "id": "config-conf",
+      "from": "config",
+      "to": "conf",
+      "label": "R/W JSON"
+    },
+    {
+      "id": "sched-runner",
+      "from": "sched",
+      "to": "runner",
+      "label": "Fetch/Gen"
+    },
+    {
+      "id": "runner-epg2xml",
+      "from": "runner",
+      "to": "epg2xml",
+      "label": "exec",
+      "variant": "emphasis"
+    },
+    {
+      "id": "runner-xmltv",
+      "from": "runner",
+      "to": "xmltv",
+      "label": "write",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "sched-tvh",
+      "from": "sched",
+      "to": "tvheadend",
+      "label": "UDS로 xmltv.xml",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "api-xmltv",
+      "from": "api",
+      "to": "xmltv",
+      "label": "GET file",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "메인 경로",
+      "items": [
+        "브라우저 Web UI가 HTTP API로 설정·작업을 제어한다",
+        "Scheduler가 cron과 수동 트리거로 채널 갱신·XMLTV 생성을 직렬 실행한다",
+        "EPG2XMLRunner가 epg2xml CLI를 실행해 xmltv.xml을 만든다"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "영속 데이터",
+      "items": [
+        "ConfigManager가 ko-epggrab.json과 epg2xml.json을 원자적 기록한다",
+        "채널 DB는 epg2xml_channels.json, 산출물은 /epggrab/xmltv.xml",
+        "SendToSocket이면 Scheduler가 xmltv.xml 바이트를 xmltv.sock(UDS)으로 복사해 Tvheadend에 넘긴다"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "배포 경계",
+      "items": [
+        "Docker 이미지에 Go 바이너리와 epg2xml(pip)이 함께 들어간다",
+        "compose에서 /conf와 /epggrab 볼륨을 Tvheadend와 공유한다"
+      ]
+    }
+  ]
+}

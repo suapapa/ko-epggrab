@@ -11,6 +11,8 @@
 내장 웹 UI에서 채널과 스케줄, 옵션을 바꾼 뒤 Cron으로 돌리고,
 나온 `xmltv.xml`을 Tvheadend Unix Domain Socket으로 넘긴다.
 
+![ko-epggrab 시스템 구조](_img/ko-epggrab.webp)
+
 ## 기능
 
 - 웹 UI에서 프로바이더, 카테고리, 검색으로 채널 선택
