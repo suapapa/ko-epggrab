@@ -9,7 +9,7 @@ services:
     volumes:
       - ./tvheadend_config:/config # tvheadend의 설정 디렉터리
       - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
-      - /data/recording/tvheadend:/recordings
+      - ./tvheadend_recording:/recordings # 방송 녹화 디렉터리
     network_mode: "host"
     devices:
       - /dev/dri:/dev/dri
@@ -18,13 +18,13 @@ services:
     image: ghcr.io/suapapa/ko-epggrab:latest
     container_name: ko-epggrab
     # environment:
-    #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 채널 목록 갱신 주기
-    #   - CRON_GENERATE_XMLTV="0 */12 * * *" # xmltv.xml의 생성 및 UDS 전송 주기
+    #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 기본 채널 목록 갱신 주기 변경
+    #   - CRON_GENERATE_XMLTV="0 */12 * * *" # 기본 xmltv.xml의 생성 및 UDS 전송 주기 변경
     command:
       - -fc # EPG 제공업체에서 채널 목록 갱신
-      - -pc # EPG 제공업체와 카테고리를 나열
+      - -pc # EPG 제공업체(예; NAVER,LG)와 카테고리(예; 지상파, 홈쇼핑...)를 나열
       - NAVER:지상파,종합 편성;LG:홈쇼핑 # pc 옵션의 값
-      - -nf # 위의 채널 목록에서 선택할 whitelist
+      - -nf # 위의 채널 목록에서 선택할 화이트리스트
       - 경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2 # nf 옵션의 값
       - -ss # send to socket
       - -d # deamon mode

@@ -46,7 +46,7 @@ services:
     volumes:
       - ./tvheadend_config:/config # tvheadend의 설정 디렉터리
       - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
-      - /data/recording/tvheadend:/recordings
+      - ./tvheadend_recording:/recordings
     network_mode: "host"
     devices:
       - /dev/dri:/dev/dri
