@@ -13,6 +13,8 @@
 
 ![ko-epggrab 시스템 구조](_img/ko-epggrab.webp)
 
+![ko-epggrab 웹 UI](_img/ko-epggrab-web.webp)
+
 ## 기능
 
 - 웹 UI에서 프로바이더, 카테고리, 검색으로 채널 선택
