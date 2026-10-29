@@ -14,24 +14,22 @@ services:
     devices:
       - /dev/dri:/dev/dri
     restart: unless-stopped
+
   ko-epggrab:
     image: ghcr.io/suapapa/ko-epggrab:latest
     container_name: ko-epggrab
+    ports:
+      - "8080:8080" # 웹 설정 UI
     # environment:
-    #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 기본 채널 목록 갱신 주기 변경
-    #   - CRON_GENERATE_XMLTV="0 */12 * * *" # 기본 xmltv.xml의 생성 및 UDS 전송 주기 변경
-    command:
-      - -fc # EPG 제공업체에서 채널 목록 갱신
-      - -pc # EPG 제공업체(예; NAVER,LG)와 카테고리(예; 지상파, 홈쇼핑...)를 나열
-      - NAVER:지상파,종합 편성;LG:홈쇼핑 # pc 옵션의 값
-      - -nf # 위의 채널 목록에서 선택할 화이트리스트
-      - 경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2 # nf 옵션의 값
-      - -ss # send to socket
-      - -d # deamon mode
+    #   - HTTP_ADDR=:8080
+    #   - CRON_CHANNEL_FETCH=0 0 * * 1      # 최초 ko-epggrab.json 생성 시 seed
+    #   - CRON_GENERATE_XMLTV=0 */12 * * *  # 최초 ko-epggrab.json 생성 시 seed
     volumes:
+      - ko_epggrab_conf:/conf # 런타임 설정 및 채널 목록 영속화
       - epggrab_data:/epggrab # tvheadend와 같은 volume → xmltv.sock 공유
     restart: unless-stopped
 
 volumes:
   tvheadend_config:
   epggrab_data:
+  ko_epggrab_conf:

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ko-epggrab</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.2.5/400.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.2.5/500.min.css" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <rect x="3" y="6" width="18" height="13" rx="2.5"/>
+              <path d="M8 3l4 3 4-3"/>
+              <circle cx="12" cy="12.5" r="2.2"/>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <p class="brand-name">ko-epggrab</p>
+            <p class="brand-sub">Broadcast Control</p>
+          </div>
+          <span id="status-badge" class="status-badge is-idle" role="status" aria-live="polite" aria-atomic="true">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text">대기 중</span>
+          </span>
+        </div>
+
+        <nav class="tab-rail" role="tablist" aria-label="워크스페이스">
+          <button type="button" class="tab-btn is-active" data-tab="channels" role="tab" aria-selected="true" aria-controls="panel-channels">
+            채널 선택
+            <span id="tab-selected-count" class="tab-count" aria-label="선택된 채널 수">0</span>
+          </button>
+          <button type="button" class="tab-btn" data-tab="settings" role="tab" aria-selected="false" aria-controls="panel-settings">스케줄 · 설정</button>
+          <button type="button" class="tab-btn" data-tab="logs" role="tab" aria-selected="false" aria-controls="panel-logs">실행 로그</button>
+        </nav>
+
+        <div class="topbar-actions">
+          <button type="button" id="btn-fetch" class="btn btn-secondary">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M4 12a8 8 0 0 1 14.1-5.1M20 12a8 8 0 0 1-14.1 5.1"/>
+              <path d="M18 3v4h-4M6 21v-4h4"/>
+            </svg>
+            <span>채널 DB 갱신</span>
+          </button>
+          <button type="button" id="btn-generate" class="btn btn-primary">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7z"/>
+            </svg>
+            <span>XMLTV 생성</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="kpi-toolbar">
+      <p class="kpi-toolbar-label">상태 요약</p>
+      <button type="button" id="btn-toggle-kpi" class="btn btn-ghost btn-sm" aria-expanded="true" aria-controls="kpi-strip">
+        <span id="kpi-toggle-label">요약 접기</span>
+        <svg class="btn-icon kpi-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>
+      </button>
+    </div>
+
+    <section class="kpi-strip" id="kpi-strip" aria-label="상태 요약">
+      <article class="kpi bezel" id="card-channels-db" data-tone="db">
+        <div class="kpi-core">
+          <div class="kpi-head">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+            </span>
+            <h2>전체 채널 DB</h2>
+          </div>
+          <p class="kpi-value" id="stat-db-primary">불러오는 중…</p>
+          <p class="kpi-meta" id="stat-db-secondary"></p>
+        </div>
+      </article>
+
+      <article class="kpi bezel is-clickable" id="card-selected" data-tone="sel" title="선택된 채널만 보기" tabindex="0" role="button" aria-label="선택된 채널만 보기">
+        <div class="kpi-core">
+          <div class="kpi-head">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11.5 11 13.5 15.5 9"/><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>
+            </span>
+            <h2>선택된 채널</h2>
+          </div>
+          <p class="kpi-value" id="stat-selected-primary">0개 채널 활성</p>
+          <p class="kpi-meta" id="stat-selected-secondary"></p>
+        </div>
+      </article>
+
+      <article class="kpi bezel" id="card-xmltv" data-tone="xml">
+        <div class="kpi-core">
+          <div class="kpi-head">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            </span>
+            <h2>XMLTV 파일</h2>
+          </div>
+          <p class="kpi-value" id="stat-xmltv-primary">없음</p>
+          <p class="kpi-meta kpi-actions">
+            <a id="link-xmltv-download" class="text-action" href="/xmltv.xml" download>다운로드</a>
+            <button type="button" id="btn-copy-xmltv-url" class="text-action">URL 복사</button>
+          </p>
+        </div>
+      </article>
+
+      <article class="kpi bezel" id="card-socket" data-tone="sock">
+        <div class="kpi-core">
+          <div class="kpi-head">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10v4M12 8v8M16 10v4"/><rect x="4" y="5" width="16" height="14" rx="3"/></svg>
+            </span>
+            <h2>Tvheadend 소켓</h2>
+          </div>
+          <p class="kpi-value" id="stat-socket-primary">확인 중…</p>
+          <p class="kpi-meta mono" id="stat-socket-secondary"></p>
+        </div>
+      </article>
+    </section>
+
+    <main class="workspace">
+      <section id="panel-channels" class="panel is-active" role="tabpanel" aria-labelledby="tab-channels">
+        <div class="channels-layout">
+          <aside class="provider-pane bezel" aria-label="EPG 프로바이더">
+            <div class="pane-core">
+              <div class="pane-label">프로바이더</div>
+              <div id="provider-list" class="provider-list"></div>
+            </div>
+          </aside>
+
+          <div class="channels-pane bezel">
+            <div class="pane-core channels-core">
+              <div class="filters-sticky">
+                <div class="filter-bar">
+                  <label class="search-shell">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                      <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+                    </svg>
+                    <span class="sr-only">채널 검색</span>
+                    <input id="search-input" type="search" placeholder="채널명 · 번호 · ServiceId" autocomplete="off" />
+                    <kbd class="kbd">/</kbd>
+                  </label>
+                  <label class="switch-field">
+                    <input id="toggle-selected-only" type="checkbox" />
+                    <span class="switch-ui" aria-hidden="true"></span>
+                    <span class="switch-text">선택만 보기 <span id="selected-only-count" class="count-inline">0</span></span>
+                  </label>
+                </div>
+                <div class="category-row">
+                  <div id="category-chips" class="chip-row" role="group" aria-label="카테고리 필터"></div>
+                  <div class="bulk-actions">
+                    <span id="visible-count" class="bulk-count">표시 0</span>
+                    <span id="visible-selected-count" class="bulk-count accent">이 목록 0개 선택</span>
+                    <button type="button" id="btn-select-visible" class="btn btn-ghost btn-sm">현재 목록 전체 선택</button>
+                    <button type="button" id="btn-deselect-visible" class="btn btn-ghost btn-sm">전체 해제</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="channels-empty" class="empty-state hidden">
+                <div class="empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+                </div>
+                <p class="empty-title">채널 목록이 아직 없습니다</p>
+                <p class="empty-body">상단 <strong>채널 DB 갱신</strong>으로 EPG 제공사에서 최신 목록을 가져오세요.</p>
+              </div>
+
+              <div class="table-shell">
+                <table class="channel-table" aria-label="채널 목록">
+                  <thead>
+                    <tr>
+                      <th class="col-check" scope="col">
+                        <input id="header-check" class="row-check" type="checkbox" aria-label="현재 목록 전체 선택" />
+                      </th>
+                      <th class="col-icon" scope="col"><span class="sr-only">아이콘</span></th>
+                      <th scope="col">채널명</th>
+                      <th class="col-no" scope="col">번호</th>
+                      <th class="col-provider" scope="col">프로바이더</th>
+                      <th class="col-category" scope="col">카테고리</th>
+                      <th class="col-id" scope="col">ServiceId</th>
+                    </tr>
+                  </thead>
+                  <tbody id="channel-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-settings" class="panel" role="tabpanel" hidden>
+        <div class="settings-grid">
+          <article class="settings-card bezel">
+            <div class="pane-core">
+              <h2 class="section-title">스케줄 및 전송</h2>
+
+              <label class="field">
+                <span class="field-label">채널 목록 갱신 주기</span>
+                <input id="cron-fetch" type="text" class="mono input" spellcheck="false" />
+              </label>
+              <div class="chip-row" id="cron-fetch-presets">
+                <button type="button" class="chip" data-cron="0 0 * * 1">매주 월요일</button>
+                <button type="button" class="chip" data-cron="0 0 * * *">매일 자정</button>
+                <button type="button" class="chip" data-cron="0 0 1 * *">매월 1일</button>
+              </div>
+              <p class="field-hint">다음 실행 <span id="next-fetch" class="mono">—</span></p>
+
+              <label class="field">
+                <span class="field-label">XMLTV 생성 주기</span>
+                <input id="cron-generate" type="text" class="mono input" spellcheck="false" />
+              </label>
+              <div class="chip-row" id="cron-generate-presets">
+                <button type="button" class="chip" data-cron="0 */6 * * *">6시간마다</button>
+                <button type="button" class="chip" data-cron="0 */12 * * *">12시간마다</button>
+                <button type="button" class="chip" data-cron="0 4 * * *">매일 04시</button>
+              </div>
+              <p class="field-hint">다음 실행 <span id="next-generate" class="mono">—</span></p>
+
+              <div class="socket-card">
+                <div>
+                  <p class="socket-title">Tvheadend UDS 전송</p>
+                  <p class="field-hint tight">생성 완료 시 xmltv.sock으로 즉시 푸시</p>
+                  <p class="field-hint mono tight" id="socket-path-hint"></p>
+                </div>
+                <label class="switch-field solo">
+                  <span class="sr-only">소켓 전송 사용</span>
+                  <input id="send-to-socket" type="checkbox" />
+                  <span class="switch-ui" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <article class="settings-card bezel">
+            <div class="pane-core">
+              <h2 class="section-title">epg2xml 전역 옵션</h2>
+
+              <fieldset class="field">
+                <legend class="field-label">수집 기간 (FETCH_LIMIT)</legend>
+                <div class="segmented" id="fetch-limit-group">
+                  <label class="seg"><input type="radio" name="fetch-limit" value="1" /><span>1일</span></label>
+                  <label class="seg"><input type="radio" name="fetch-limit" value="2" checked /><span>2일</span></label>
+                  <label class="seg"><input type="radio" name="fetch-limit" value="3" /><span>3일</span></label>
+                  <label class="seg"><input type="radio" name="fetch-limit" value="5" /><span>5일</span></label>
+                  <label class="seg"><input type="radio" name="fetch-limit" value="7" /><span>7일</span></label>
+                </div>
+              </fieldset>
+
+              <label class="field">
+                <span class="field-label">채널 ID 형식 (ID_FORMAT)</span>
+                <div class="input-row">
+                  <input id="id-format" type="text" class="mono input" spellcheck="false" />
+                  <button type="button" id="btn-reset-id-format" class="btn btn-ghost btn-sm">기본값</button>
+                </div>
+              </label>
+
+              <label class="field">
+                <span class="field-label">HTTP 프록시 (선택)</span>
+                <input id="http-proxy" type="text" class="mono input" placeholder="http://proxy.example.com:8080" spellcheck="false" />
+              </label>
+
+              <div class="option-grid">
+                <label class="opt"><input id="opt-epnum" type="checkbox" /><span>제목에 회차 정보</span></label>
+                <label class="opt"><input id="opt-desc" type="checkbox" /><span>프로그램 상세 설명</span></label>
+                <label class="opt"><input id="opt-icon" type="checkbox" /><span>채널 아이콘 포함</span></label>
+                <label class="opt"><input id="opt-rebroadcast" type="checkbox" /><span>제목에 재방송 표시</span></label>
+                <label class="opt"><input id="opt-xmltv-ns" type="checkbox" /><span>xmltv_ns 회차 태그</span></label>
+                <label class="opt opt-warn">
+                  <input id="opt-more-details" type="checkbox" />
+                  <span>추가 상세정보 크롤링<span class="opt-note">느려질 수 있음</span></span>
+                </label>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="paths-box bezel">
+          <div class="pane-core">
+            <p class="pane-label">인프라 경로</p>
+            <pre id="paths-box" class="paths-pre"></pre>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button type="button" id="btn-settings-save-generate" class="btn btn-secondary">저장 후 생성</button>
+          <button type="button" id="btn-settings-save" class="btn btn-primary">설정 저장</button>
+        </div>
+      </section>
+
+      <section id="panel-logs" class="panel" role="tabpanel" hidden>
+        <div class="logs-shell bezel">
+          <div class="pane-core logs-core">
+            <div class="logs-header">
+              <div id="logs-meta" class="logs-meta">최근 작업 없음</div>
+              <div class="logs-actions">
+                <label class="switch-field compact">
+                  <input id="logs-follow" type="checkbox" checked />
+                  <span class="switch-ui" aria-hidden="true"></span>
+                  <span class="switch-text">자동 스크롤</span>
+                </label>
+                <button type="button" id="btn-logs-copy" class="btn btn-ghost btn-sm">로그 복사</button>
+                <button type="button" id="btn-logs-refresh" class="btn btn-ghost btn-sm">새로고침</button>
+              </div>
+            </div>
+            <pre id="logs-view" class="logs-view" aria-live="polite"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="dirty-bar" class="dirty-bar" hidden>
+    <div class="dirty-inner">
+      <div class="dirty-copy">
+        <span class="dirty-dot" aria-hidden="true"></span>
+        <p id="dirty-message">저장되지 않은 변경사항이 있습니다</p>
+      </div>
+      <div class="dirty-actions">
+        <button type="button" id="btn-revert" class="btn btn-ghost">되돌리기</button>
+        <button type="button" id="btn-save" class="btn btn-secondary">설정만 저장</button>
+        <button type="button" id="btn-save-generate" class="btn btn-primary">저장 후 즉시 생성</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

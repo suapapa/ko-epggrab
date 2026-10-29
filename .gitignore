@@ -31,3 +31,7 @@ Thumbs.db
 # Env
 .env
 .env.*
+
+# AI Agents
+.agents/
+skills-lock.json

@@ -1,101 +1,75 @@
 # ko-epggrab
 
-[한국의 EPG](https://namu.wiki/w/%EC%A0%84%EC%9E%90%20%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%A8%20%EC%95%88%EB%82%B4#s-2)는
-부실하게 관리되고 있음. 일 예로, tvheadend에서 지상파의 OTA EPG를 사용하려 하면 느린 속도와 부족한 정보에 울화통이 터짐.
+[한국의 OTA EPG](https://namu.wiki/w/%EC%A0%84%EC%9E%90%20%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%A8%20%EC%95%88%EB%82%B4#s-2)는 부실하게 관리되고 있다.
+일 예로 Tvheadend에서 지상파 OTA EPG만 쓰려 하면, 느린 속도에 부족한 정보까지 겹쳐 울화통이 터진다.
 
-다행히, 웹에서 여러 업체(포털, IPTV 프로바이더)가 자체적으로 EPG를 제공하고 있고
-[epg2xml](https://github.com/epg2xml/epg2xml) 를 사용하면
-Tvheadend의 XMLTV EPG Grabber Module 에서 사용하는 `xmltv.xml`를 만들수 있음.
+다행히 웹에서는 포털이나 IPTV 사업자가 자체 EPG를 내놓고 있고,
+[`epg2xml`](https://github.com/epg2xml/epg2xml)으로 Tvheadend XMLTV Grabber가 읽는 `xmltv.xml`을 만들 수 있다.
+문제는 채널 고르기, 주기 실행, 소켓 전송을 매번 손으로 맞추는 일이다.
 
-하지만, 설정과 반복실행을 자동화 하기가 힘든점이 어려웠음.
+`ko-epggrab`은 `epg2xml`을 감싼 Go 데몬이다.
+내장 웹 UI에서 채널과 스케줄, 옵션을 바꾼 뒤 Cron으로 돌리고,
+나온 `xmltv.xml`을 Tvheadend Unix Domain Socket으로 넘긴다.
 
-ko-epggrab 은 epg2xml의 채널 목록을 json 설정 파일, `epg2xml.json`
-에 채워 넣는 과정과 주기적인 실행을 단순, 자동화 하고 Tvheadend로 부터 분리하기 위해 만들었으며
-다음의 기능이 있음:
-- EPG 프로바이더, 카테고리별 채널 선택
-- 채널 이름의 allow list 필터링
-- 주기적인 채널 목록 갱신 (기본값: 1주일에 한 번)
-- 주기적인 EPG 생성 및 UDS 푸시 (기본값: 12시간마다)
+## 기능
 
+- 웹 UI에서 프로바이더, 카테고리, 검색으로 채널 선택
+- Cron 주기와 소켓 전송, `epg2xml` GLOBAL 옵션을 런타임에 변경
+- 수동 채널 DB 갱신 / XMLTV 생성, 실행 로그 확인
+- `GET /xmltv.xml` HTTP 서빙
 
-## 도커 이미지로 실험해 보기
+## 빠른 시작 (Docker)
 
-채널 목록을 패치하고(`-fc`) 채널 목록을 Yaml 포멧으로 프로바이더와 카테고리별로 나열(`-lc`) :
+[`docker-compose.yml`](docker-compose.yml)을 받아 Tvheadend와 함께 올린다.
+핵심은 `epggrab_data` volume을 공유하는 것이다. Tvheadend는 `/config/epggrab`, ko-epggrab은 `/epggrab`에 마운트해 `xmltv.sock`을 같이 쓴다.
+
 ```sh
-mkdir epg2xml_conf
-docker run \
-  -it --rm -v $(pwd)/epg2xml_conf:/conf \
-  ghcr.io/suapapa/ko-epggrab:latest \
-    -fc -lc
+curl -fsSL -O https://raw.githubusercontent.com/suapapa/ko-epggrab/main/docker-compose.yml
+docker compose up -d
 ```
 
-Docker-Compose 로 tvheadend와 함께 사용하는 예제:
+1. 컨테이너 기동 후 `http://<host>:8080` 접속
+2. 채널DB 갱신으로 전체 채널 목록 수집
+3. 원하는 채널을 선택하고 저장
+4. XMLTV 생성 실행 (또는 Cron 대기)
 
-Tvheadend의 XMLTV socket grabber는 `/config/epggrab/xmltv.sock` 에서 listen 한다.
-UDS는 네트워크가 아니라 파일시스템 경로이므로, 두 컨테이너가 같은 Docker volume을
-각각 `/config/epggrab` 과 `/epggrab` 에 마운트해 `xmltv.sock` 을 공유한다.
-```yaml
-services:
-  tvheadend:
-    image: lscr.io/linuxserver/tvheadend:latest
-    container_name: tvheadend
-    environment:
-      - PUID=0
-      - PGID=0
-      - TZ=Asia/Seoul
-    volumes:
-      - tvheadend_config:/config # tvheadend의 설정 디렉터리
-      - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
-      - ./tvheadend_recording:/recordings
-    network_mode: "host"
-    devices:
-      - /dev/dri:/dev/dri
-    restart: unless-stopped
-  ko-epggrab:
-    image: ghcr.io/suapapa/ko-epggrab:latest
-    container_name: ko-epggrab
-    # environment:
-    #   - CRON_CHANNEL_FETCH="0 0 * * 1" # 채널 목록 갱신 주기
-    #   - CRON_GENERATE_XMLTV="0 */12 * * *" # xmltv.xml의 생성 및 UDS 전송 주기
-    command:
-      - -fc # EPG 제공업체에서 채널 목록 갱신
-      - -pc # EPG 제공업체와 카테고리를 나열
-      - NAVER:지상파,종합 편성;LG:홈쇼핑 # pc 옵션의 값
-      - -nf # 위의 채널 목록에서 선택할 whitelist
-      - 경인 KBS1,KBS2,MBC,SBS,EBS1,EBS2 # nf 옵션의 값
-      - -ss # send to socket
-      - -d # deamon mode
-    volumes:
-      - epggrab_data:/epggrab # tvheadend와 같은 volume → xmltv.sock 공유
-    restart: unless-stopped
+## 환경 변수 (부트스트랩)
 
-volumes:
-  tvheadend_config:
-  epggrab_data:
+| 변수 | 기본값 (Docker) | 설명 |
+| --- | --- | --- |
+| `HTTP_ADDR` | `:8080` | 웹 UI / API 리스닝 주소 |
+| `KO_EPGGRAB_CONF` | `/conf/ko-epggrab.json` | 런타임 설정 (Single Source of Truth) |
+| `EPG2XML_CHANNEL_CONF` | `/conf/epg2xml_channels.json` | 전체 채널 DB |
+| `EPG2XML_PROGRAM_CONF` | `/conf/epg2xml.json` | `epg2xml` 실행용 설정 (자동 생성) |
+| `XMLTV_XML_PATH` | `/epggrab/xmltv.xml` | 생성 XMLTV 경로 |
+| `XMLTV_SOCK_PATH` | `/epggrab/xmltv.sock` | Tvheadend UDS 경로 |
+| `CRON_CHANNEL_FETCH` | `0 0 * * 1` | 최초 설정 파일 seed |
+| `CRON_GENERATE_XMLTV` | `0 */12 * * *` | 최초 설정 파일 seed |
+
+스케줄과 채널 선택, 옵션은 웹 UI에서 바꾸고 `ko-epggrab.json`에 저장한다.
+
+## 로컬 개발
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install git+https://github.com/epg2xml/epg2xml.git
+
+go build -o ko-epggrab
+./ko-epggrab
+# → http://localhost:8080
 ```
 
-## 참고
-
-### TVHeadend UI 설정
+## Tvheadend 설정
 
 ![EPGGrabberModule](_img/EPGGrabberModule.png)
 ![EPGGrabberChannels](_img/EPGGrabberChannels.png)
 
-### 개발 방법
+## 참고
 
-epg2xml 설치:
-```sh
-python -m venv .venv
-source .venv/bin/activate
-pip install git+https://github.com/epg2xml/epg2xml.git
-```
+- 상세 설계: [`DESIGN.md`](DESIGN.md), [`DESIGN_UI.md`](DESIGN_UI.md)
+- 기반 도구: [`epg2xml`](https://github.com/epg2xml/epg2xml)
 
-ko-epggrab 빌드:
-```sh
-go build
-```
+## License
 
-실행:
-```sh
-./epg2xml -h
-```
+[MIT](LICENSE)

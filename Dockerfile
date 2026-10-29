@@ -8,12 +8,15 @@ RUN go build -o ko-epggrab
 
 FROM python:3.11-alpine
 
-# 채널 목록 갱신 주기
+# 웹 UI / API
+ENV HTTP_ADDR=:8080
+
+# 최초 ko-epggrab.json 생성 시 seed 값 (이후에는 웹 UI에서 변경)
 ENV CRON_CHANNEL_FETCH="0 0 * * 1"
-# xmltv.xml의 생성 및 UDS 전송 주기
 ENV CRON_GENERATE_XMLTV="0 */12 * * *"
 
-# epg2xml 이 생성한 파일들을 보고 싶으면 /conf 에 마운트
+# 설정 / 채널 / 프로그램 conf
+ENV KO_EPGGRAB_CONF=/conf/ko-epggrab.json
 ENV EPG2XML_CHANNEL_CONF=/conf/epg2xml_channels.json
 ENV EPG2XML_PROGRAM_CONF=/conf/epg2xml.json
 
@@ -29,7 +32,7 @@ RUN apk del git
 ENV TZ=Asia/Seoul
 RUN apk --no-cache add tzdata && \
     cp /usr/share/zoneinfo/$TZ /etc/localtime && \
-    echo $TZ > /etc/timezone \
+    echo $TZ > /etc/timezone && \
     apk del tzdata
 
 RUN mkdir /conf
@@ -37,5 +40,5 @@ RUN mkdir /conf
 WORKDIR /app
 COPY --from=builder /app/ko-epggrab .
 
-#CMD ["/bin/sh", "-c", "./ko-epggrab -fc -pc \"$CH_PROVIDERS_CATEGORIES\" -nf \"$CH_NAME_FILETER\" -ss -d"]
+EXPOSE 8080
 ENTRYPOINT ["./ko-epggrab"]
