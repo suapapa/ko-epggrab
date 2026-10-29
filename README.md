@@ -30,6 +30,10 @@ docker run \
 ```
 
 Docker-Compose 로 tvheadend와 함께 사용하는 예제:
+
+Tvheadend의 XMLTV socket grabber는 `/config/epggrab/xmltv.sock` 에서 listen 한다.
+UDS는 네트워크가 아니라 파일시스템 경로이므로, 두 컨테이너가 같은 Docker volume을
+각각 `/config/epggrab` 과 `/epggrab` 에 마운트해 `xmltv.sock` 을 공유한다.
 ```yaml
 services:
   tvheadend:
@@ -40,7 +44,8 @@ services:
       - PGID=0
       - TZ=Asia/Seoul
     volumes:
-      - /system/tvheadend/config:/config # tvheadend의 설정 디렉터리
+      - ./tvheadend_config:/config # tvheadend의 설정 디렉터리
+      - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
       - /data/recording/tvheadend:/recordings
     network_mode: "host"
     devices:
@@ -61,8 +66,11 @@ services:
       - -ss # send to socket
       - -d # deamon mode
     volumes:
-      - /system/tvheadend/config/epggrab:/epggrab # tvheadend 에서 마운트한 설정디레터리와 base가 같아야 서로 통신 가능
+      - epggrab_data:/epggrab # tvheadend와 같은 volume → xmltv.sock 공유
     restart: unless-stopped
+
+volumes:
+  epggrab_data:
 ```
 
 ## 참고

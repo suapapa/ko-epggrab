@@ -17,7 +17,7 @@ ENV CRON_GENERATE_XMLTV="0 */12 * * *"
 ENV EPG2XML_CHANNEL_CONF=/conf/epg2xml_channels.json
 ENV EPG2XML_PROGRAM_CONF=/conf/epg2xml.json
 
-# epggrab 소켓을 사용하기위해 tvheadend의 /conf/epggrab 을 /epggrab 에 마운트
+# tvheadend의 /config/epggrab 과 같은 volume을 /epggrab 에 마운트해 xmltv.sock 공유
 ENV XMLTV_XML_PATH=/epggrab/xmltv.xml
 ENV XMLTV_SOCK_PATH=/epggrab/xmltv.sock
 
