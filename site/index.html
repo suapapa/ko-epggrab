@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ko-epggrab — 한국 방송 편성표 XMLTV 자동 송출 데몬</title>
+  <meta name="description" content="한국의 11개 EPG 제공사로부터 2,250개 채널 편성표를 수집해 Tvheadend Unix Domain Socket으로 자동 전송하는 Go 데몬과 내장 웹 콘솔." />
+  <meta name="theme-color" content="#070709" />
+  <script>document.documentElement.classList.add('js');</script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.2.5/400.min.css" /> <!-- taste-skill-ignore -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-bar" aria-label="주요 메뉴">
+      <a class="brand-link" href="#">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="6" width="18" height="13" rx="2" />
+            <path d="M8 3l4 3 4-3" />
+            <circle cx="12" cy="12.5" r="2" />
+          </svg>
+        </span>
+        <span>ko-epggrab</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#showcase">실시간 조합</a></li>
+        <li><a href="#pipeline">동작 구조</a></li>
+        <li><a href="#features">런타임 제어</a></li>
+        <li><a href="#specs">환경 명세</a></li>
+        <li><a href="architecture-ko-epggrab-20261029-212410/ko-epggrab.html">아키텍처 뷰</a></li>
+      </ul>
+      <a class="nav-action" href="https://github.com/suapapa/ko-epggrab" target="_blank" rel="noopener">GitHub 저장소</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- HERO: Fragment on a shaped stage -->
+    <section class="hero-section" aria-label="소개">
+      <div class="hero-grid">
+        <div class="hero-copy-col">
+          <h1 class="display-title">
+            <span class="line"><span data-line style="--i:0">한국 방송 편성표를</span></span>
+            <span class="line"><span data-line style="--i:1">Tvheadend로 직결</span></span>
+          </h1>
+          <p class="lead-copy" data-load style="--d:260ms">
+            부실한 지상파 OTA EPG 대신 11개 웹 제공사의 2,250개 채널 편성표를 수집하는 <code>epg2xml</code> 기반 Go 데몬입니다. 내장 웹 콘솔에서 채널과 Cron 주기를 고르면 <code>xmltv.sock</code>으로 바로 밀어 넣습니다.
+          </p>
+          <div class="hero-actions" data-load style="--d:340ms">
+            <a class="btn-primary" href="#quickstart">도커로 시작하기</a>
+            <a class="btn-surface" href="architecture-ko-epggrab-20261029-212410/ko-epggrab.html">인터랙티브 구조도</a>
+          </div>
+          <div class="hero-facts" data-load style="--d:420ms">
+            <div class="hero-fact-box">
+              <p class="hero-fact-val">11개 제공사 · 2,250채널</p>
+              <p class="hero-fact-desc">NAVER, KT, LG, SK, DAUM, WAVVE, TVING, SPOTV, 지상파 3사 지원</p>
+            </div>
+            <div class="hero-fact-box">
+              <p class="hero-fact-val">단일 바이너리 내장 UI</p>
+              <p class="hero-fact-desc">복잡한 CLI 플래그 없이 <code>:8080</code> 웹에서 즉시 설정 및 소켓 전송</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-stage-col" data-load style="--d:180ms">
+          <div data-ui aria-label="Broadcast Control 웹 콘솔 데모">
+            <div class="console-fragment">
+              <div class="console-topbar">
+                <div class="console-brand">
+                  <strong>ko-epggrab</strong>
+                  <span id="hero-status-badge" class="console-badge" role="status" aria-live="polite">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span id="hero-status-text">대기 중</span>
+                  </span>
+                </div>
+                <div class="console-actions">
+                  <button type="button" id="hero-btn-fetch" class="ui-btn">채널 DB 갱신</button>
+                  <button type="button" id="hero-btn-generate" class="ui-btn is-accent">XMLTV 생성</button>
+                </div>
+              </div>
+
+              <div class="console-kpis">
+                <div class="console-kpi" data-tone="db">
+                  <div class="console-kpi-label">전체 채널 DB</div>
+                  <div class="console-kpi-val">11개 제공사 · 2,250개</div>
+                </div>
+                <div class="console-kpi" data-tone="sel">
+                  <div class="console-kpi-label">선택된 채널</div>
+                  <div id="hero-kpi-selected" class="console-kpi-val">8개 채널 활성</div>
+                </div>
+                <div class="console-kpi" data-tone="sock">
+                  <div class="console-kpi-label">XMLTV · UDS 소켓</div>
+                  <div id="hero-kpi-xml" class="console-kpi-val">220.8 KB · 연결됨</div>
+                </div>
+              </div>
+
+              <div class="console-workspace">
+                <div id="hero-provider-rail" class="provider-rail" role="tablist" aria-label="EPG 제공사 선택">
+                  <button type="button" class="provider-btn" data-prov="ALL">
+                    <span>전체</span>
+                    <span class="provider-count">8/2250</span>
+                  </button>
+                  <button type="button" class="provider-btn is-active" data-prov="NAVER">
+                    <span>NAVER</span>
+                    <span class="provider-count">5/472</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-prov="KT">
+                    <span>KT</span>
+                    <span class="provider-count">2/309</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-prov="LG">
+                    <span>LG</span>
+                    <span class="provider-count">0/347</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-prov="WAVVE">
+                    <span>WAVVE</span>
+                    <span class="provider-count">0/154</span>
+                  </button>
+                  <button type="button" class="provider-btn" data-prov="SPOTV">
+                    <span>SPOTV</span>
+                    <span class="provider-count">1/5</span>
+                  </button>
+                </div>
+
+                <div class="channel-table-wrap">
+                  <div class="channel-filter-row">
+                    <span id="hero-filter-summary" class="filter-summary">표시 6 · 선택 5</span>
+                    <button type="button" id="hero-btn-selected-only" class="toggle-pill" aria-pressed="false">선택만 보기</button>
+                  </div>
+                  <ul id="hero-ch-list" class="ch-list" aria-label="채널 목록"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: SHOWCASE — Input half, output half -->
+    <section id="showcase" class="showcase-section" aria-labelledby="showcase-heading">
+      <div class="showcase-header">
+        <h2 id="showcase-heading" class="section-title" data-reveal style="--delay:0ms">
+          채널을 고르면<br />XMLTV가 완성됩니다
+        </h2>
+        <p class="muted-copy" data-reveal style="--delay:80ms">
+          과거에는 <code>-pc "NAVER:지상파"</code>나 <code>-nf "KBS1,KBS2"</code> 같은 복잡한 플래그를 직접 조합해야 했습니다. 이제 왼쪽에서 채널과 옵션을 토글해 보세요. 오른쪽에서 <code>ko-epggrab.json</code>과 <code>xmltv.xml</code>이 실시간으로 합성됩니다.
+        </p>
+      </div>
+
+      <div class="showcase-split">
+        <div class="showcase-input-half" data-reveal style="--delay:120ms">
+          <div>
+            <p class="input-group-title">수집할 방송 채널 선택</p>
+            <div id="showcase-chips" class="chip-grid" role="group" aria-label="채널 토글 목록">
+              <button type="button" class="channel-chip" data-ch-key="NAVER:814581" aria-pressed="true">
+                <span>KBS1</span>
+                <code>NAVER</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="NAVER:814582" aria-pressed="true">
+                <span>KBS2</span>
+                <code>NAVER</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="NAVER:814588" aria-pressed="true">
+                <span>MBC</span>
+                <code>NAVER</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="NAVER:814592" aria-pressed="false">
+                <span>SBS</span>
+                <code>NAVER</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="KT:1" aria-pressed="true">
+                <span>ENA</span>
+                <code>KT</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="KT:15" aria-pressed="false">
+                <span>JTBC</span>
+                <code>KT</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="LG:3" aria-pressed="false">
+                <span>tvN</span>
+                <code>LG</code>
+              </button>
+              <button type="button" class="channel-chip" data-ch-key="SPOTV:SP1" aria-pressed="false">
+                <span>SPOTV Prime</span>
+                <code>SPOTV</code>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p class="input-group-title">epg2xml 전역 메타데이터 옵션</p>
+            <div id="showcase-options" class="option-toggles" role="group" aria-label="epg2xml 전역 옵션">
+              <button type="button" class="option-switch" data-opt="ADD_REBROADCAST_TO_TITLE" aria-pressed="true">
+                <span>제목에 재방송 표시</span>
+                <span class="switch-indicator">켜짐</span>
+              </button>
+              <button type="button" class="option-switch" data-opt="ADD_EPNUM_TO_TITLE" aria-pressed="true">
+                <span>제목에 회차 번호 추가</span>
+                <span class="switch-indicator">켜짐</span>
+              </button>
+              <button type="button" class="option-switch" data-opt="ADD_DESCRIPTION" aria-pressed="true">
+                <span>프로그램 상세 설명 포함</span>
+                <span class="switch-indicator">켜짐</span>
+              </button>
+              <button type="button" class="option-switch" data-opt="ADD_CHANNEL_ICON" aria-pressed="true">
+                <span>채널 아이콘 URL 보존</span>
+                <span class="switch-indicator">켜짐</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="split-foot-row">
+            <span class="split-foot-word">웹 콘솔 입력</span>
+            <span id="showcase-selected-count" class="muted-copy">4개 채널 선택됨</span>
+          </div>
+        </div>
+
+        <div class="showcase-output-half" data-reveal style="--delay:200ms">
+          <div data-ui aria-label="생성된 설정 및 XMLTV 결과">
+            <div class="output-tabs">
+              <div id="showcase-output-tabs" class="output-tab-list" role="tablist" aria-label="출력 파일 전환">
+                <button type="button" class="output-tab" role="tab" data-out-tab="ko-epggrab" aria-selected="true">ko-epggrab.json</button>
+                <button type="button" class="output-tab" role="tab" data-out-tab="xmltv" aria-selected="false">xmltv.xml</button>
+                <button type="button" class="output-tab" role="tab" data-out-tab="epg2xml" aria-selected="false">epg2xml.json</button>
+              </div>
+              <button type="button" id="showcase-copy-btn" class="ui-btn">출력 복사</button>
+            </div>
+            <pre class="code-stage"><code id="showcase-code-output"></code></pre>
+          </div>
+
+          <div class="split-foot-row">
+            <span class="muted-copy">실행 직전 최신 메타데이터 자동 병합</span>
+            <span class="split-foot-word">자동 생성 산출물</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: HOW IT WORKS — Pinned fragment, changing state -->
+    <section id="pipeline" class="pipeline-section" aria-labelledby="pipeline-heading">
+      <div class="pipeline-grid">
+        <div class="pipeline-steps-col">
+          <h2 id="pipeline-heading" class="section-title" data-reveal style="--delay:0ms">
+            수집부터 소켓 전송까지
+          </h2>
+          <p class="muted-copy" data-reveal style="--delay:80ms">
+            모든 <code>epg2xml</code> 실행은 단일 워커 뮤텍스로 직렬화되어 충돌을 막습니다. 아래 세 단계를 클릭하거나 스크롤하면 데몬 내부 상태가 어떻게 전이되는지 확인할 수 있습니다.
+          </p>
+
+          <ol class="pipeline-list">
+            <li class="pipeline-step is-active" data-pipeline-step="0" data-reveal style="--delay:120ms">
+              <div class="pipeline-step-head">
+                <span class="pipeline-step-title">전체 채널 DB 주기적 갱신</span>
+                <span class="pipeline-step-state">매주 월요일 자정</span>
+              </div>
+              <p class="muted-copy">
+                <code>epg2xml update_channels</code>는 기존 채널 파일이 남아 있으면 갱신하지 않는 특성이 있습니다. 데몬이 먼저 <code>os.Remove</code>로 이전 파일을 지운 뒤 11개 제공사의 최신 채널 목록을 수집합니다.
+              </p>
+            </li>
+
+            <li class="pipeline-step" data-pipeline-step="1" data-reveal style="--delay:180ms">
+              <div class="pipeline-step-head">
+                <span class="pipeline-step-title">런타임 설정과 메타데이터 합성</span>
+                <span class="pipeline-step-state">Single Source of Truth</span>
+              </div>
+              <p class="muted-copy">
+                <code>epg2xml</code>이 설정 파일을 재포맷하더라도 사용자 설정이 유실되지 않도록 <code>/conf/ko-epggrab.json</code>을 원본으로 보존합니다. 실행 직전에 최신 <code>Icon_url</code>과 <code>Category</code>를 매칭해 <code>epg2xml.json</code>을 생성합니다.
+              </p>
+            </li>
+
+            <li class="pipeline-step" data-pipeline-step="2" data-reveal style="--delay:240ms">
+              <div class="pipeline-step-head">
+                <span class="pipeline-step-title">XMLTV 생성 및 소켓 스트리밍</span>
+                <span class="pipeline-step-state">12시간 주기 · UDS</span>
+              </div>
+              <p class="muted-copy">
+                생성된 <code>/epggrab/xmltv.xml</code> 파일을 HTTP(<code>GET /xmltv.xml</code>)로 서빙함과 동시에, 공유 볼륨에 마운트된 Tvheadend의 <code>/epggrab/xmltv.sock</code> 유닉스 도메인 소켓으로 즉시 전송합니다.
+              </p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="pipeline-stage-col">
+          <div data-ui aria-label="워커 파이프라인 상태 모니터" data-reveal style="--delay:140ms">
+            <div class="state-monitor">
+              <div class="monitor-header">
+                <strong>Scheduler · EPG2XMLRunner 상태</strong>
+                <div class="monitor-tabs" role="tablist" aria-label="파이프라인 단계 선택">
+                  <button type="button" class="monitor-tab is-active" data-monitor-tab="0">채널 갱신</button>
+                  <button type="button" class="monitor-tab" data-monitor-tab="1">설정 합성</button>
+                  <button type="button" class="monitor-tab" data-monitor-tab="2">소켓 전송</button>
+                </div>
+              </div>
+              <div class="monitor-body">
+                <div class="monitor-kv-grid">
+                  <div class="monitor-kv">
+                    <div class="monitor-k">현재 작업 단계</div>
+                    <div id="mon-badge" class="monitor-v">채널 DB 갱신</div>
+                  </div>
+                  <div class="monitor-kv">
+                    <div class="monitor-k">동시성 제어</div>
+                    <div id="mon-mutex" class="monitor-v">workerMu.Lock() 단일 실행 보장</div>
+                  </div>
+                </div>
+                <div class="monitor-kv">
+                  <div class="monitor-k">실행 명령 및 내부 호출</div>
+                  <div class="monitor-v"><code id="mon-cmd">os.Remove("/conf/epg2xml_channels.json") &amp;&amp; epg2xml update_channels</code></div>
+                </div>
+                <div class="monitor-kv" style="margin-top:0.75rem;">
+                  <div class="monitor-k">대상 파일 및 소켓</div>
+                  <div class="monitor-v"><code id="mon-target">/conf/epg2xml_channels.json (11개 제공사 · 2,250개 채널)</code></div>
+                </div>
+                <pre class="code-stage" style="min-height:8.5rem; margin-top:0.75rem;"><code id="mon-log">[2026-10-30 00:00:01] Starting channel list update
+[2026-10-30 00:00:01] Removed stale /conf/epg2xml_channels.json
+[2026-10-30 00:00:04] Loaded KT(309), LG(347), SK(268), NAVER(472), DAUM(415), WAVVE(154)...
+[2026-10-30 00:00:05] Saved 2,250 channels successfully (took 4.1s)</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <figure class="arch-figure" data-reveal style="--delay:220ms">
+            <img src="assets/ko-epggrab.webp" width="1600" height="789" loading="lazy" decoding="async" alt="ko-epggrab 시스템 아키텍처 다이어그램: 브라우저 Web UI, HTTP Server, ConfigManager, Scheduler, EPG2XMLRunner, epg2xml CLI, Tvheadend xmltv.sock 간의 데이터 흐름" />
+            <figcaption class="arch-caption">
+              <span>ko-epggrab 프로세스 및 볼륨 경계 다이어그램</span>
+              <a href="architecture-ko-epggrab-20261029-212410/ko-epggrab.html">전체화면 인터랙티브 다이어그램 열기</a>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: FEATURES — Staggered fragment cells & Real Screenshots/Video -->
+    <section id="features" class="features-section" aria-labelledby="features-heading">
+      <div class="features-head">
+        <h2 id="features-heading" class="section-title" data-reveal style="--delay:0ms">
+          재시작 없는 런타임 제어
+        </h2>
+        <p class="muted-copy" data-reveal style="--delay:80ms">
+          Go 표준 라이브러리의 <code>//go:embed</code>로 내장된 웹 콘솔과 Tvheadend 연동 화면입니다. 컨테이너를 내리지 않고 브라우저에서 모든 스케줄과 채널을 관리합니다.
+        </p>
+      </div>
+
+      <!-- Row A: 7 / 5 split -->
+      <div class="mosaic-row-a">
+        <article class="feature-cell cell-7" data-reveal style="--delay:100ms">
+          <div>
+            <p class="feature-cell-title">2,250개 채널 탐색과 부분 DOM 갱신</p>
+            <p class="muted-copy">
+              단축키 <code>/</code>로 채널명·채널 번호·<code>ServiceId</code>를 150ms 디바운스로 검색하고, <code>Shift+클릭</code>으로 범위를 일괄 선택합니다. 빈 카테고리는 자동으로 <code>미분류</code>로 묶어 누락 없이 탐색합니다.
+            </p>
+          </div>
+          <figure class="media-frame shutter">
+            <img src="assets/ko-epggrab-web.webp" width="1600" height="1132" loading="lazy" decoding="async" alt="ko-epggrab 내장 웹 콘솔 실제 화면: 상단 상태 요약 카드 4종과 NAVER 지상파 7개 채널 선택 테이블" />
+          </figure>
+        </article>
+
+        <article class="feature-cell is-stage cell-5" data-reveal style="--delay:180ms">
+          <div data-ui aria-label="동적 Cron 스케줄 프리셋 컨트롤">
+            <div class="cron-fragment">
+              <div class="cron-row">
+                <span>XMLTV 생성 스케줄</span>
+                <code id="feature-cron-code">0 */12 * * *</code>
+              </div>
+              <div class="cron-presets" role="group" aria-label="주기 프리셋">
+                <button type="button" class="preset-chip is-active" data-cron-val="0 */12 * * *" data-cron-next="다음 실행: 오늘 24:00 (12시간 주기)">12시간마다</button>
+                <button type="button" class="preset-chip" data-cron-val="0 */6 * * *" data-cron-next="다음 실행: 오늘 18:00 (6시간 주기)">6시간마다</button>
+                <button type="button" class="preset-chip" data-cron-val="0 4 * * *" data-cron-next="다음 실행: 내일 04:00 (매일 새벽)">매일 04:00</button>
+              </div>
+              <div class="cron-row">
+                <span id="feature-cron-next" class="muted-copy">다음 실행: 오늘 24:00 (12시간 주기)</span>
+                <span>즉시 재등록됨</span>
+              </div>
+              <div class="cron-row">
+                <span>채널 DB 갱신 스케줄</span>
+                <code>0 0 * * 1</code>
+              </div>
+              <div class="cron-row">
+                <span>Tvheadend 소켓 자동 전송</span>
+                <code>/epggrab/xmltv.sock</code>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="feature-cell-title">Cron 동적 재등록과 비동기 실행</p>
+            <p class="muted-copy">
+              <code>PUT /api/config</code>가 호출되면 기존 <code>robfig/cron/v3</code> 엔트리를 즉시 교체합니다. 소켓 파일이 아직 없더라도 데몬과 웹 서버는 멈추지 않고 상태를 기록합니다.
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <!-- Row B: 5 / 7 split with real looping video -->
+      <div class="mosaic-row-b">
+        <article class="feature-cell is-stage cell-5" data-reveal style="--delay:100ms">
+          <div>
+            <p class="feature-cell-title">링 버퍼 실시간 실행 로그와 HTTP 서빙</p>
+            <p class="muted-copy">
+              <code>io.MultiWriter</code>가 <code>epg2xml</code>의 표준 출력과 에러를 메모리 링 버퍼에 동시에 기록합니다. 소켓 공유가 어려운 원격 환경에서는 <code>GET /xmltv.xml</code> 엔드포인트로 직접 편성표를 받아갈 수 있습니다.
+            </p>
+          </div>
+          <div data-ui aria-label="최근 작업 로그 요약">
+            <pre class="code-stage" style="min-height:11rem; max-height:14rem;"><code>[INFO] GET /api/status -> 200 OK (state: idle)
+[INFO] Triggered manual action: generate-xmltv
+[INFO] epg2xml v2.4.1 run started (18 channels)
+[INFO] Writing /epggrab/xmltv.xml (1.42 MB)
+[INFO] Sent to /epggrab/xmltv.sock in 42ms
+[INFO] GET /xmltv.xml -> 200 OK (application/xml)</code></pre>
+          </div>
+        </article>
+
+        <article class="feature-cell cell-7" data-reveal style="--delay:180ms">
+          <figure class="media-frame">
+            <video autoplay muted loop playsinline preload="metadata" poster="assets/console-demo-poster.jpg" width="1280" height="720" aria-hidden="true">
+              <source src="assets/console-demo.mp4" type="video/mp4" />
+            </video>
+          </figure>
+          <div>
+            <p class="feature-cell-title">다크 톤과 시그널 앰버의 방송 제어 콘솔</p>
+            <p class="muted-copy">
+              Proxmox, Tailscale, Tvheadend 옆에 나란히 띄워 두기 편한 깊은 Zinc 다크 표면과 방송 시그널 앰버 액센트로 설계했습니다. 외부 번들러 없이 순수 ES6와 CSS로 동작합니다.
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <!-- Row C: 6 / 6 Tvheadend integration screenshots -->
+      <div class="mosaic-row-c">
+        <article class="feature-cell cell-6" data-reveal style="--delay:100ms">
+          <div>
+            <p class="feature-cell-title">Tvheadend XMLTV 모듈 활성화</p>
+            <p class="muted-copy">
+              Tvheadend의 <code>Configuration → Channel / EPG → EPG Grabber Modules</code>에서 <code>External: XMLTV</code>를 켜면 공유 볼륨의 <code>/config/epggrab/xmltv.sock</code> 경로로 편성표를 수신합니다.
+            </p>
+          </div>
+          <figure class="media-frame">
+            <img src="assets/EPGGrabberModule.png" width="1142" height="1233" loading="lazy" decoding="async" alt="Tvheadend EPG Grabber Modules 설정 화면에서 External: XMLTV 모듈을 활성화하고 /config/epggrab/xmltv.sock 경로를 확인하는 모습" />
+          </figure>
+        </article>
+
+        <article class="feature-cell cell-6" data-reveal style="--delay:180ms">
+          <figure class="media-frame">
+            <img src="assets/EPGGrabberChannels.png" width="1142" height="1233" loading="lazy" decoding="async" alt="Tvheadend EPG Grabber Channels 탭에 EBS1, EBS2, KBS2, MBC, SBS, 경인 KBS1 채널이 XMLTV 소켓을 통해 등록된 화면" />
+          </figure>
+          <div>
+            <p class="feature-cell-title">EPG Grabber 채널 자동 매핑</p>
+            <p class="muted-copy">
+              소켓 전송이 완료되면 <code>EPG Grabber Channels</code> 탭에 선택한 한국 방송 채널들이 자동으로 나타납니다. 원한다면 설정 파일 하나만 백업해 다른 서버로 그대로 옮길 수 있습니다.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- SECTION 4: LIST — Two-ended rows across balanced columns -->
+    <section id="specs" class="spec-section" aria-labelledby="specs-heading">
+      <div class="spec-header">
+        <h2 id="specs-heading" class="section-title" data-reveal style="--delay:0ms">
+          환경 변수와 내장 API
+        </h2>
+        <p class="muted-copy" data-reveal style="--delay:80ms">
+          컨테이너 내부 경로와 리스닝 주소만 환경 변수로 지정합니다. 스케줄과 채널 선택은 모두 <code>ko-epggrab.json</code>에 영속 저장되며, 외부 대시보드에서도 REST API로 제어할 수 있습니다.
+        </p>
+      </div>
+
+      <div class="spec-grid">
+        <div class="spec-col-left" data-reveal style="--delay:120ms">
+          <p class="spec-group-title">인프라 경로 및 부트스트랩 환경 변수</p>
+          <ul class="two-end-list">
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>HTTP_ADDR</code></span>
+                  <span class="row-desc">웹 콘솔 및 REST API 리스닝 주소</span>
+                </div>
+              </div>
+              <span class="row-right num">:8080</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>KO_EPGGRAB_CONF</code></span>
+                  <span class="row-desc">런타임 설정 원본 (Single Source of Truth)</span>
+                </div>
+              </div>
+              <span class="row-right num">/conf/ko-epggrab.json</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-blue" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>EPG2XML_CHANNEL_CONF</code></span>
+                  <span class="row-desc">11개 제공사 전체 채널 후보 DB</span>
+                </div>
+              </div>
+              <span class="row-right num">/conf/epg2xml_channels.json</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-blue" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>EPG2XML_PROGRAM_CONF</code></span>
+                  <span class="row-desc">실행 직전 자동 합성되는 epg2xml 설정</span>
+                </div>
+              </div>
+              <span class="row-right num">/conf/epg2xml.json</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-green" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>XMLTV_XML_PATH</code></span>
+                  <span class="row-desc">생성될 XMLTV 편성표 파일 경로</span>
+                </div>
+              </div>
+              <span class="row-right num">/epggrab/xmltv.xml</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-green" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>XMLTV_SOCK_PATH</code></span>
+                  <span class="row-desc">Tvheadend XMLTV 유닉스 도메인 소켓</span>
+                </div>
+              </div>
+              <span class="row-right num">/epggrab/xmltv.sock</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>CRON_CHANNEL_FETCH</code></span>
+                  <span class="row-desc">최초 기동 시 채널 DB 갱신 초기값</span>
+                </div>
+              </div>
+              <span class="row-right num">0 0 * * 1</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>CRON_GENERATE_XMLTV</code></span>
+                  <span class="row-desc">최초 기동 시 XMLTV 생성 초기값</span>
+                </div>
+              </div>
+              <span class="row-right num">0 */12 * * *</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="spec-col-right" data-reveal style="--delay:180ms">
+          <p class="spec-group-title">REST 엔드포인트 및 11개 제공사</p>
+          <ul class="two-end-list">
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-green" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>GET /xmltv.xml</code></span>
+                  <span class="row-desc">생성된 XMLTV 파일 다운로드 및 HTTP 서빙</span>
+                </div>
+              </div>
+              <span class="row-right num">application/xml</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-blue" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>GET /api/status</code></span>
+                  <span class="row-desc">워커 상태, 마지막 실행 결과, 다음 Cron 시각</span>
+                </div>
+              </div>
+              <span class="row-right num">JSON 상태 응답</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-blue" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>GET · PUT /api/config</code></span>
+                  <span class="row-desc">런타임 설정 저장 및 스케줄러 즉시 리로드</span>
+                </div>
+              </div>
+              <span class="row-right num">trigger=generate</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>POST /api/actions/fetch-channels</code></span>
+                  <span class="row-desc">전체 채널 목록 갱신 비동기 실행 트리거</span>
+                </div>
+              </div>
+              <span class="row-right num">비동기 워커</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>POST /api/actions/generate-xmltv</code></span>
+                  <span class="row-desc">XMLTV 생성 및 UDS 소켓 전송 즉시 실행</span>
+                </div>
+              </div>
+              <span class="row-right num">비동기 워커</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-blue" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name"><code>GET /api/logs</code></span>
+                  <span class="row-desc">메모리 링 버퍼의 최근 실행 표준 출력·에러 조회</span>
+                </div>
+              </div>
+              <span class="row-right num">링 버퍼</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name">포털 및 IPTV 3사</span>
+                  <span class="row-desc">웹 편성표 및 유료방송 채널 제공사</span>
+                </div>
+              </div>
+              <span class="row-right num">NAVER · DAUM · KT · LG · SK</span>
+            </li>
+            <li class="two-end-row">
+              <div class="row-left">
+                <span class="row-dot is-green" aria-hidden="true"></span>
+                <div>
+                  <span class="row-name">OTT · 스포츠 · 지상파</span>
+                  <span class="row-desc">실시간 스트리밍 및 방송사 직접 수집</span>
+                </div>
+              </div>
+              <span class="row-right num">TVING · WAVVE · SPOTV · 지상파</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: CTA — First step, already open -->
+    <section id="quickstart" class="cta-section" aria-labelledby="cta-heading">
+      <div class="cta-grid">
+        <div class="cta-copy-col" data-reveal style="--delay:0ms">
+          <h2 id="cta-heading" class="display-title">
+            볼륨 하나로<br />지금 바로 기동
+          </h2>
+          <p class="lead-copy">
+            핵심은 <code>epggrab_data</code> 볼륨을 공유하는 것입니다. Tvheadend는 <code>/config/epggrab</code>에, <code>ko-epggrab</code>은 <code>/epggrab</code>에 마운트해 <code>xmltv.sock</code>을 함께 씁니다.
+          </p>
+          <p class="muted-copy">
+            멀티 아키텍처 이미지(<code>linux/amd64</code>, <code>linux/arm64</code>)가 GitHub Container Registry에 준비되어 있습니다. 컨테이너를 올린 뒤 <code>http://&lt;host&gt;:8080</code>에 접속해 원하는 채널을 고르세요.
+          </p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="docker-compose.yml" download>docker-compose.yml 받기</a>
+            <a class="btn-surface" href="https://github.com/suapapa/ko-epggrab/pkgs/container/ko-epggrab" target="_blank" rel="noopener">GHCR 컨테이너 이미지</a>
+          </div>
+        </div>
+
+        <div class="cta-dialog-col" data-reveal style="--delay:120ms">
+          <div data-ui aria-label="Docker Compose 빠른 시작 생성기">
+            <div class="compose-dialog">
+              <div class="dialog-head">
+                <strong>빠른 시작 구성기 (docker-compose.yml)</strong>
+                <code>ghcr.io/suapapa/ko-epggrab:latest</code>
+              </div>
+
+              <div class="dialog-controls">
+                <div>
+                  <label class="field-label" for="cta-port-input">웹 콘솔 호스트 포트</label>
+                  <input id="cta-port-input" class="field-input" type="text" value="8080" />
+                </div>
+                <div>
+                  <label class="field-label" for="cta-cron-select">초기 XMLTV 생성 주기</label>
+                  <select id="cta-cron-select" class="field-input">
+                    <option value="0 */12 * * *">12시간마다 (0 */12 * * *)</option>
+                    <option value="0 */6 * * *">6시간마다 (0 */6 * * *)</option>
+                    <option value="0 4 * * *">매일 04:00 (0 4 * * *)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="cta-rec-input">Tvheadend 녹화 경로</label>
+                  <input id="cta-rec-input" class="field-input" type="text" value="./tvheadend_recording" />
+                </div>
+              </div>
+
+              <pre class="compose-pre"><code id="cta-compose-pre"></code></pre>
+
+              <div class="dialog-foot">
+                <code>curl -fsSL -O https://raw.githubusercontent.com/suapapa/ko-epggrab/main/docker-compose.yml &amp;&amp; docker compose up -d</code>
+                <button type="button" id="cta-copy-compose" class="ui-btn is-accent">Compose 복사</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- SECTION 6: FOOTER — A single quiet line -->
+  <footer class="site-footer">
+    <div class="footer-line">
+      <span>ko-epggrab · 한국 방송 XMLTV 자동 송출 데몬</span>
+      <ul class="footer-links">
+        <li><a href="https://github.com/suapapa/ko-epggrab" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/epg2xml/epg2xml" target="_blank" rel="noopener">epg2xml</a></li>
+        <li><a href="architecture-ko-epggrab-20261029-212410/ko-epggrab.html">시스템 구조도</a></li>
+        <li><a href="docker-compose.yml" download>docker-compose.yml</a></li>
+      </ul>
+      <span class="footer-right">2026 · <a href="https://github.com/suapapa/ko-epggrab/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

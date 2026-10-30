@@ -1,0 +1,35 @@
+services:
+  tvheadend:
+    image: lscr.io/linuxserver/tvheadend:latest
+    container_name: tvheadend
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Seoul
+    volumes:
+      - tvheadend_config:/config # tvheadend의 설정 디렉터리
+      - epggrab_data:/config/epggrab # xmltv.sock 공유 (UDS)
+      - ./tvheadend_recording:/recordings # 방송 녹화 디렉터리
+    network_mode: "host"
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped
+
+  ko-epggrab:
+    image: ghcr.io/suapapa/ko-epggrab:latest
+    container_name: ko-epggrab
+    ports:
+      - "8080:8080" # 웹 설정 UI
+    # environment:
+    #   - HTTP_ADDR=:8080
+    #   - CRON_CHANNEL_FETCH=0 0 * * 1      # 최초 ko-epggrab.json 생성 시 seed
+    #   - CRON_GENERATE_XMLTV=0 */12 * * *  # 최초 ko-epggrab.json 생성 시 seed
+    volumes:
+      - ko_epggrab_conf:/conf # 런타임 설정 및 채널 목록 영속화
+      - epggrab_data:/epggrab # tvheadend와 같은 volume → xmltv.sock 공유
+    restart: unless-stopped
+
+volumes:
+  tvheadend_config:
+  epggrab_data:
+  ko_epggrab_conf:
